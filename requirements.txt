@@ -1,0 +1,11 @@
+﻿drain3==0.9.11
+matplotlib==3.11.2
+numpy==2.5.4
+ollama==0.6.3
+pandas==3.1.0
+PyYAML==6.0.3
+scikit-learn==1.9.1
+sentence-transformers==6.2.0
+streamlit==1.66.1
+torch==2.15.0
+tqdm==4.70.1
