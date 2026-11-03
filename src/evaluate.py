@@ -31,6 +31,68 @@ def metrics(y_true, y_pred, scores):
     return dict(precision=pr, recall=rc, f1=f1, roc_auc=auc, TP=tp, FP=fp, FN=fn, TN=tn)
 
 
+def cross_main():
+    """STEP C: train on SOURCE dataset, test on TARGET (HDFS->HDFS, BGL->BGL, HDFS->BGL, BGL->HDFS).
+    Threshold = 95th percentile of the source model's scores on the TARGET's normal TRAIN sequences."""
+    from src.embed import embed_dataset
+    from src.models.emb_models import EmbIForest, EmbLSTM
+    cfg = load_config()
+    set_seed(cfg["seed"])
+    l, pct = cfg["lstm"], cfg["iforest"]["threshold_percentile"]
+    emb = {n: embed_dataset(n, cfg) for n in ["HDFS", "BGL"]}
+    split = {n: load_split(n, cfg) for n in ["HDFS", "BGL"]}
+    rows, sens = [], []
+    for src in ["HDFS", "BGL"]:
+        normal = split[src][0]
+        normal = normal[normal.label == 0].events.tolist()[: cfg["data"]["max_train_sequences"]]
+        models = {"EmbIForest": EmbIForest(cfg["iforest"]["n_estimators"], cfg["seed"]),
+                  "EmbLSTM": EmbLSTM(l["hidden_size"], l["num_layers"], l["batch_size"], l["epochs"], l["lr"], l["window"], cfg["seed"])}
+        for mname, m in models.items():
+            t0 = time.time()
+            m.fit(normal, emb[src])
+            fit_s = time.time() - t0
+            for tgt in ["HDFS", "BGL"]:
+                tr, te = split[tgt]
+                tr_normal = tr[tr.label == 0].events.tolist()[: cfg["data"]["max_train_sequences"]]
+                m.calibrate(tr_normal, emb[tgt], pct)            # target-normal calibration (no anomaly labels)
+                ev = te.events.tolist()
+                r = metrics(te.label.values, m.predict(ev, emb[tgt]), m.score(ev, emb[tgt]))
+                r.update(model=mname, experiment=f"{src}->{tgt}", train_seconds=round(fit_s, 1))
+                rows.append(r)
+                for q in [80, 90, 99]:                           # sensitivity of F1 to the calibration percentile
+                    m.calibrate(tr_normal, emb[tgt], q)
+                    sens.append(dict(model=mname, experiment=f"{src}->{tgt}", percentile=q,
+                                     f1=metrics(te.label.values, m.predict(ev, emb[tgt]), m.score(ev, emb[tgt]))["f1"]))
+                print(f"  {mname:10s} {src}->{tgt}: P={r['precision']:.3f} R={r['recall']:.3f} F1={r['f1']:.3f} AUC={r['roc_auc']:.3f} "
+                      f"| TP={r['TP']} FP={r['FP']} FN={r['FN']} TN={r['TN']}")
+    df = pd.DataFrame(rows)[["model", "experiment", "precision", "recall", "f1", "roc_auc", "TP", "FP", "FN", "TN", "train_seconds"]]
+    out = p(cfg["paths"]["results_dir"])
+    df.round(4).to_csv(out / "cross_dataset.csv", index=False)
+    sens.extend({"model": r["model"], "experiment": r["experiment"], "percentile": pct, "f1": r["f1"]} for r in rows)
+    sd = pd.DataFrame(sens)
+    sd.round(4).to_csv(out / "cross_dataset_threshold_sensitivity.csv", index=False)
+    print("\n F1 vs calibration percentile:\n", sd.pivot_table(index=["model", "experiment"], columns="percentile", values="f1").round(3).to_string())
+    print("\n", df.pivot(index="model", columns="experiment", values="f1").round(3).to_string())
+    print("\n AUC:\n", df.pivot(index="model", columns="experiment", values="roc_auc").round(3).to_string())
+
+    # bar chart: F1 (left) and ROC-AUC (right), grouped by experiment
+    exps = ["HDFS->HDFS", "BGL->BGL", "HDFS->BGL", "BGL->HDFS"]
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.8), sharey=True)
+    for ax, col, ttl in zip(axes, ["f1", "roc_auc"], ["F1 (anomaly class)", "ROC-AUC"]):
+        for k, (mn, color) in enumerate([("EmbIForest", "#4C78A8"), ("EmbLSTM", "#F58518")]):
+            v = [df[(df.model == mn) & (df.experiment == e)][col].iloc[0] for e in exps]
+            bars = ax.bar(np.arange(4) + (k - 0.5) * 0.38, v, 0.38, label=mn, color=color)
+            ax.bar_label(bars, fmt="%.2f", fontsize=7)
+        ax.set_xticks(range(4), exps, fontsize=8)
+        ax.set_title(ttl)
+        ax.set_ylim(0, 1.05)
+        ax.spines[["top", "right"]].set_visible(False)
+    axes[0].legend(fontsize=8)
+    plt.tight_layout()
+    plt.savefig(out / "cross_dataset.png", dpi=130)
+    print("\nSaved results/cross_dataset.csv and results/cross_dataset.png")
+
+
 def main():
     cfg = load_config()
     set_seed(cfg["seed"])
@@ -85,4 +147,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cross_main() if "cross" in sys.argv[1:] else main()
