@@ -1,0 +1,6 @@
+﻿venv/
+data/
+references/
+__pycache__/
+*.pyc
+.ollama_cache/

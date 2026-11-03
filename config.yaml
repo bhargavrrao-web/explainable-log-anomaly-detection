@@ -1,0 +1,44 @@
+# Central config: every path and hyperparameter lives here (no magic numbers in code).
+seed: 42
+
+paths:
+  raw_dir: data/raw
+  parsed_dir: data/parsed
+  seq_dir: data/sequences
+  results_dir: results
+  hdfs_raw: data/raw/HDFS_100k.log_structured.csv   # loglizer's 100k-line HDFS sample (we re-parse Content ourselves)
+  hdfs_labels: data/raw/HDFS_anomaly_label.csv      # block-level labels
+  bgl_raw: data/raw/BGL_2k.log                      # loghub BGL sample (per-line labels)
+
+data:
+  max_lines: 200000          # cap on lines per dataset
+  max_train_sequences: 20000 # cap on training sequences
+  train_fraction: 0.7        # chronological split: first 70% = train, last 30% = test
+
+bgl:
+  window_size: 20
+  step: 10
+
+drain:
+  depth: 4
+  sim_th: 0.5
+  max_children: 100
+
+iforest:
+  n_estimators: 100
+  contamination: auto
+
+lstm:
+  hidden_size: 64
+  num_layers: 1
+  batch_size: 64
+  epochs: 3
+  lr: 0.001
+  window: 10      # DeepLog history length (events used to predict the next one)
+  top_k: 9        # flag if the true next event is NOT in the top-k predictions
+
+embedding:
+  model_name: all-MiniLM-L6-v2
+
+ollama:
+  model: llama3.2:1b
