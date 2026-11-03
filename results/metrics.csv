@@ -1,0 +1,5 @@
+dataset,model,precision,recall,f1,roc_auc,TP,FP,FN,TN,train_seconds
+HDFS,IsolationForest,0.1964,0.1818,0.1888,0.5678,22,90,99,2171,0.3
+HDFS,LSTM(DeepLog),0.9333,0.4628,0.6188,0.6596,56,4,65,2257,19.8
+BGL,IsolationForest,0.5,0.88,0.6377,0.7989,22,22,3,13,0.2
+BGL,LSTM(DeepLog),0.5556,1.0,0.7143,0.6109,25,20,0,15,0.5

@@ -27,6 +27,7 @@ drain:
 iforest:
   n_estimators: 100
   contamination: auto
+  threshold_percentile: 95   # flag sequences scoring above the 95th percentile of normal-train scores
 
 lstm:
   hidden_size: 64
