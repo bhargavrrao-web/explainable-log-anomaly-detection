@@ -1,4 +1,4 @@
-# Central config: every path and hyperparameter lives here (no magic numbers in code).
+﻿# Central config: every path and hyperparameter lives here (no magic numbers in code).
 seed: 42
 
 paths:
@@ -8,7 +8,7 @@ paths:
   results_dir: results
   hdfs_raw: data/raw/HDFS_100k.log_structured.csv   # loglizer's 100k-line HDFS sample (we re-parse Content ourselves)
   hdfs_labels: data/raw/HDFS_anomaly_label.csv      # block-level labels
-  bgl_raw: data/raw/BGL_2k.log                      # loghub BGL sample (per-line labels)
+  bgl_raw: data/raw/BGL_200k.log                    # first 200k lines of full BGL (made by src/get_bgl.py); BGL_2k.log = old tiny sample
 
 data:
   max_lines: 200000          # cap on lines per dataset
@@ -43,3 +43,4 @@ embedding:
 
 ollama:
   model: llama3.2:1b
+

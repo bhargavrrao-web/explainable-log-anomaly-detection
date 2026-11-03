@@ -1,7 +1,7 @@
 model,attack_windows,flagged_attack,detection_rate,normal_windows,false_alarms,false_alarm_rate,precision,fast_burst_detected,slow_drip_detected,roc_auc
 EmbLSTM (trained on HDFS),35,0,0.0,58,1,0.017,0.0,0/18,0/17,0.34
 EmbIForest (trained on HDFS),35,7,0.2,58,0,0.0,1.0,1/18,6/17,0.8
-EmbLSTM (trained on BGL),35,35,1.0,58,0,0.0,1.0,18/18,17/17,1.0
-EmbIForest (trained on BGL),35,15,0.429,58,4,0.069,0.789,15/18,0/17,0.553
+EmbLSTM (trained on BGL),35,0,0.0,58,0,0.0,0.0,0/18,0/17,0.203
+EmbIForest (trained on BGL),35,18,0.514,58,7,0.121,0.72,15/18,3/17,0.841
 EmbIForest (trained on SSH-normal),35,28,0.8,58,9,0.155,0.757,17/18,11/17,0.898
 EmbLSTM (trained on SSH-normal),35,17,0.486,58,0,0.0,1.0,17/18,0/17,0.755

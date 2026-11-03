@@ -10,7 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, roc_auc_score
+from sklearn.metrics import average_precision_score, confusion_matrix, precision_recall_fscore_support, roc_auc_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.models.iforest import IForestDetector
@@ -28,7 +28,9 @@ def metrics(y_true, y_pred, scores):
     pr, rc, f1, _ = precision_recall_fscore_support(y_true, y_pred, average="binary", zero_division=0)
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
     auc = roc_auc_score(y_true, scores) if len(set(y_true)) > 1 else float("nan")
-    return dict(precision=pr, recall=rc, f1=f1, roc_auc=auc, TP=tp, FP=fp, FN=fn, TN=tn)
+    # average precision (PR-AUC) is the fairer threshold-free metric when anomalies are rare
+    ap = average_precision_score(y_true, scores) if len(set(y_true)) > 1 else float("nan")
+    return dict(precision=pr, recall=rc, f1=f1, roc_auc=auc, pr_auc=ap, TP=tp, FP=fp, FN=fn, TN=tn)
 
 
 def cross_main():
@@ -65,7 +67,7 @@ def cross_main():
                                      f1=metrics(te.label.values, m.predict(ev, emb[tgt]), m.score(ev, emb[tgt]))["f1"]))
                 print(f"  {mname:10s} {src}->{tgt}: P={r['precision']:.3f} R={r['recall']:.3f} F1={r['f1']:.3f} AUC={r['roc_auc']:.3f} "
                       f"| TP={r['TP']} FP={r['FP']} FN={r['FN']} TN={r['TN']}")
-    df = pd.DataFrame(rows)[["model", "experiment", "precision", "recall", "f1", "roc_auc", "TP", "FP", "FN", "TN", "train_seconds"]]
+    df = pd.DataFrame(rows)[["model", "experiment", "precision", "recall", "f1", "roc_auc", "pr_auc", "TP", "FP", "FN", "TN", "train_seconds"]]
     out = p(cfg["paths"]["results_dir"])
     df.round(4).to_csv(out / "cross_dataset.csv", index=False)
     sens.extend({"model": r["model"], "experiment": r["experiment"], "percentile": pct, "f1": r["f1"]} for r in rows)
@@ -121,11 +123,11 @@ def main():
             r.update(dataset=name, model=mname, train_seconds=round(fit_s, 1))
             rows.append(r)
             print(f"  {mname:16s} P={r['precision']:.3f} R={r['recall']:.3f} F1={r['f1']:.3f} "
-                  f"AUC={r['roc_auc']:.3f} | TP={r['TP']} FP={r['FP']} FN={r['FN']} TN={r['TN']} | train {fit_s:.1f}s")
+                  f"AUC={r['roc_auc']:.3f} PR-AUC={r['pr_auc']:.3f} | TP={r['TP']} FP={r['FP']} FN={r['FN']} TN={r['TN']} | train {fit_s:.1f}s")
             if r["f1"] > 0.99:
                 print("  !! suspiciously perfect: check for leakage")
 
-    df = pd.DataFrame(rows)[["dataset", "model", "precision", "recall", "f1", "roc_auc", "TP", "FP", "FN", "TN", "train_seconds"]]
+    df = pd.DataFrame(rows)[["dataset", "model", "precision", "recall", "f1", "roc_auc", "pr_auc", "TP", "FP", "FN", "TN", "train_seconds"]]
     out = p(cfg["paths"]["results_dir"])
     out.mkdir(exist_ok=True)
     df.round(4).to_csv(out / "metrics.csv", index=False)
